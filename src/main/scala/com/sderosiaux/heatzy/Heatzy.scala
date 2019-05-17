@@ -33,6 +33,7 @@ TODO:
 - API ?
 - metrics
 - config using ciris
+- ability to push events somewhere?
  */
 
 /*
