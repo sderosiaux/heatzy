@@ -24,7 +24,20 @@ case class BindingsResponse(devices: List[Device])
 case class Heatzy(url: String, appId: String)
 
 /*
+TODO:
+- sbt hardcore
+- ZIO (env)
+- Database
+- Refresh token consideration
+- The rest
+- API ?
+- metrics
+- config using ciris
+ */
+
+/*
 https://drive.google.com/drive/folders/0B9nVzuTl4YMOaXAzRnRhdXVma1k
+https://github.com/l3flo/jeedom-heatzy/blob/master/core/class/heatzy.class.php
  */
 
 object Heatzy extends IOApp {
