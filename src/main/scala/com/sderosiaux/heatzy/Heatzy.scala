@@ -1,6 +1,7 @@
 package com.sderosiaux.heatzy
 
 //import cats.effect.Concurrent
+import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import scalaz.zio._
 import scalaz.zio.console._
 import scalaz.zio.interop.catz._
@@ -46,17 +47,51 @@ https://drive.google.com/drive/folders/0B9nVzuTl4YMOaXAzRnRhdXVma1k
 https://github.com/l3flo/jeedom-heatzy/blob/master/core/class/heatzy.class.php
  */
 
+object WebService {
+
+  trait Service {
+    def fetchAs[T](req: Request[TaskR[Console, ?]])(implicit d: EntityDecoder[TaskR[Console, ?], T], r: Runtime[Console]): TaskR[Console, T]
+  }
+
+}
+
+trait WebService {
+  def webService: WebService.Service
+}
+
+trait WebServiceLive extends WebService {
+  override def webService: WebService.Service = new WebService.Service {
+    override def fetchAs[T](req: Request[TaskR[Console, ?]])(implicit d: EntityDecoder[TaskR[Console, ?], T], r: Runtime[Console]): TaskR[Console, T] = {
+      BlazeClientBuilder[TaskR[Console, ?]](global).resource.use { c =>
+        withLogging(c).fetchAs[T](req)
+      }
+    }
+  }
+
+  val log: String => ZIO[Console, Throwable, Unit] = (x: String) => putStrLn(x)
+
+  private def withLogging[T](c: Client[TaskR[Console, ?]]): Client[TaskR[Console, ?]] = {
+    ResponseLogger(logHeaders = true, logBody = true, logAction = log.some)(
+      RequestLogger(logHeaders = true, logBody = true, logAction = log.some)(
+        c
+      )
+    )
+  }
+}
+
+object WebServiceLive extends WebServiceLive
+
 object Heatzy extends CatsApp {
   val config = ConfigFactory.load()
   val heatzy = Heatzy(config.getString("heatzy.cloud.url"), config.getString("heatzy.app.id"))
 
-  implicit def circeJsonDecoder[A](implicit decoder: Decoder[A]): EntityDecoder[Task, A] = jsonOf[Task, A]
-  implicit def circeJsonEncoder[A](implicit encoder: Encoder[A]): EntityEncoder[Task, A] = jsonEncoderOf[Task, A]
+  implicit def circeJsonDecoder[A](implicit decoder: Decoder[A]): EntityDecoder[TaskR[Console, ?], A] = jsonOf[TaskR[Console, ?], A]
 
-  val p: Option[String => ZIO[Console, Nothing, Unit]] = ((x: String) => putStrLn(x)).some
+  implicit def circeJsonEncoder[A](implicit encoder: Encoder[A]): EntityEncoder[TaskR[Console, ?], A] = jsonEncoderOf[TaskR[Console, ?], A]
 
-  def post[A, B](path: String, body: A)(implicit d: EntityDecoder[Task, B], d2: EntityEncoder[Task, A], client: Client[Task]): Task[B] = {
-    val res = Request[Task](
+
+  def post[T, A, B](path: String, body: A)(implicit d: EntityDecoder[TaskR[Console, ?], B], d2: EntityEncoder[TaskR[Console, ?], A]): TaskR[T with WebService with Console, B] = {
+    val res = Request[TaskR[Console, ?]](
       method = Method.POST,
       uri = Uri.unsafeFromString(s"${heatzy.url}$path"),
       headers = Headers.of(
@@ -66,11 +101,11 @@ object Heatzy extends CatsApp {
       )
     ).withEntity(body)
 
-    client.fetchAs[B](res)
+    ZIO.accessM(_.webService.fetchAs[B](res))
   }
 
-  def get[A](path: String, token: String)(implicit client: Client[Task], d: EntityDecoder[Task, A]): Task[A] = {
-    val res = Request[Task](
+  def get[T, A](path: String, token: String)(implicit d: EntityDecoder[TaskR[Console, ?], A]): TaskR[T with WebService with Console, A] = {
+    val res = Request[TaskR[Console, ?]](
       method = Method.GET,
       uri = Uri.unsafeFromString(s"${heatzy.url}$path"),
       headers = Headers.of(
@@ -81,36 +116,26 @@ object Heatzy extends CatsApp {
       )
     )
 
-    client.fetchAs[A](res)
+    ZIO.accessM(_.webService.fetchAs[A](res))
   }
 
-  def bindings(token: String)(implicit client: Client[Task]): Task[BindingsResponse] = {
-    get[BindingsResponse]("/bindings", token)
+  def bindings(token: String): TaskR[WebService with Console, BindingsResponse] = {
+    get[WebService with Console, BindingsResponse]("/bindings", token)
   }
 
-  def login(username: String, password: String)(implicit client: Client[Task]): Task[LoginResponse] = {
+  def login(username: String, password: String): TaskR[WebService with Console, LoginResponse] = {
     val body = LoginRequest(username, password)
-    post[LoginRequest, LoginResponse]("/login", body)
+    post[WebService with Console, LoginRequest, LoginResponse]("/login", body)
   }
 
   override def run(args: List[String]): ZIO[Environment, Nothing, Int] = {
-    val x = BlazeClientBuilder[Task](global).resource.use { implicit c =>
-      //implicit val x = implicitly[Concurrent[TaskR[Environment, ?]]]
+    val prog = for {
+      l <- login("xxx@gmail.com", "pwd")
+      b <- bindings(l.token)
+      _ <- putStrLn(b.toString)
+    } yield 0
 
-//      implicit val client: Client[TaskR[Environment, ?]] = ResponseLogger(logHeaders = true, logBody = true, logAction = None)(
-//        RequestLogger(logHeaders = true, logBody = true, logAction = None)(c)
-//      )
-
-      val x: ZIO[Console, Throwable, Int] = for {
-        l <- login("xxx@gmail.com", "pwd")
-        b <- bindings(l.token)
-        _ <- putStrLn(b.toString)
-      } yield 0
-
-      x.provide(Environment) // remove dependency upon Console
-    }
-
-    val y: ZIO[Environment, Nothing, Int] = x.foldM(ex => putStrLn("failed:" + ex.getMessage) *> ZIO.succeed(1), _ => putStrLn("OK") *> ZIO.succeed(0))
-    y
+    prog.provide(new Console.Live with WebServiceLive)
+      .catchAll(t => putStrLn(t.getMessage) *> ZIO.succeedLazy(0))
   }
 }
