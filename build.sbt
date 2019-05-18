@@ -17,6 +17,9 @@ libraryDependencies += "org.http4s" %% "http4s-prometheus-metrics" % http4sVersi
 libraryDependencies += "io.circe" %% "circe-generic" % "0.11.1"
 libraryDependencies += "io.circe" %% "circe-literal" % "0.11.1"
 libraryDependencies += "com.typesafe" % "config" % "1.3.4"
+libraryDependencies += "org.scalaz" %% "scalaz-zio" % "1.0-RC4"
+libraryDependencies += "org.scalaz" %% "scalaz-zio-interop" % "1.0-RC4"
+libraryDependencies += "org.scalaz" %% "scalaz-zio-interop-cats" % "1.0-RC4"
 
 scalacOptions ++= Seq("-Ypartial-unification")
 
