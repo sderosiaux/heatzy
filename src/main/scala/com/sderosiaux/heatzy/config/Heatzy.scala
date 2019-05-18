@@ -9,4 +9,3 @@ case class Heatzy(url: String, appId: String)
 
 
 
-

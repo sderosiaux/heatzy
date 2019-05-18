@@ -2,8 +2,7 @@ package com.sderosiaux.heatzy
 
 import com.sderosiaux.heatzy.config.Heatzy
 import com.sderosiaux.heatzy.model.{BindingsResponse, LoginRequest, LoginResponse}
-import com.sderosiaux.heatzy.webservice.{WebService, WebServiceLive}
-import com.typesafe.config.ConfigFactory
+import com.sderosiaux.heatzy.webservice.{HeatzyWebService, HeatzyWebServiceLive, WebService, WebServiceLoggerLive}
 import io.circe.{Decoder, Encoder}
 import org.http4s.circe.{jsonEncoderOf, jsonOf}
 import org.http4s.headers.{Accept, `Content-Type`}
@@ -11,7 +10,6 @@ import org.http4s.{EntityDecoder, EntityEncoder, Header, Headers, MediaType, Met
 import scalaz.zio.console.{Console, putStrLn}
 import scalaz.zio.{TaskR, ZIO}
 import com.sderosiaux.heatzy.model.{BindingsResponse, LoginRequest, LoginResponse}
-import com.sderosiaux.heatzy.webservice.{WebService, WebServiceLive}
 import scalaz.zio._
 import scalaz.zio.console._
 import scalaz.zio.interop.catz._
@@ -46,57 +44,32 @@ object Main extends CatsApp {
   val config = ConfigFactory.load()
   val heatzy = Heatzy(config.getString("heatzy.cloud.url"), config.getString("heatzy.app.id"))
 
-  implicit def circeJsonDecoder[A](implicit decoder: Decoder[A]): EntityDecoder[TaskR[Console, ?], A] = jsonOf[TaskR[Console, ?], A]
+  implicit def circeJsonDecoder[A](implicit decoder: Decoder[A]): EntityDecoder[Task, A] = jsonOf[Task, A]
 
-  implicit def circeJsonEncoder[A](implicit encoder: Encoder[A]): EntityEncoder[TaskR[Console, ?], A] = jsonEncoderOf[TaskR[Console, ?], A]
+  implicit def circeJsonEncoder[A](implicit encoder: Encoder[A]): EntityEncoder[Task, A] = jsonEncoderOf[Task, A]
 
 
-  def post[T, A, B](path: String, body: A)(implicit d: EntityDecoder[TaskR[Console, ?], B], d2: EntityEncoder[TaskR[Console, ?], A]): TaskR[T with WebService with Console, B] = {
-    val res = Request[TaskR[Console, ?]](
-      method = Method.POST,
-      uri = Uri.unsafeFromString(s"${heatzy.url}$path"),
-      headers = Headers.of(
-        Accept(MediaType.application.json),
-        `Content-Type`(MediaType.application.json),
-        Header("X-Gizwits-Application-Id", heatzy.appId)
-      )
-    ).withEntity(body)
-
-    ZIO.accessM(_.webService.fetchAs[B](res))
+  def bindings(token: String): ZIO[HeatzyWebService, Throwable, BindingsResponse] = {
+    ZIO.accessM((x: HeatzyWebService) => {
+      x.heatzy.get[BindingsResponse]("/bindings", token)
+    })
   }
 
-  def get[T, A](path: String, token: String)(implicit d: EntityDecoder[TaskR[Console, ?], A]): TaskR[T with WebService with Console, A] = {
-    val res = Request[TaskR[Console, ?]](
-      method = Method.GET,
-      uri = Uri.unsafeFromString(s"${heatzy.url}$path"),
-      headers = Headers.of(
-        Accept(MediaType.application.json),
-        `Content-Type`(MediaType.application.json),
-        Header("X-Gizwits-Application-Id", heatzy.appId),
-        Header("X-Gizwits-User-token", token)
-      )
-    )
-
-    ZIO.accessM(_.webService.fetchAs[A](res))
-  }
-
-  def bindings(token: String): TaskR[WebService with Console, BindingsResponse] = {
-    get[WebService with Console, BindingsResponse]("/bindings", token)
-  }
-
-  def login(username: String, password: String): TaskR[WebService with Console, LoginResponse] = {
+  def login(username: String, password: String): ZIO[HeatzyWebService, Throwable, LoginResponse] = {
     val body = LoginRequest(username, password)
-    post[WebService with Console, LoginRequest, LoginResponse]("/login", body)
+    ZIO.accessM((x: HeatzyWebService) => {
+      x.heatzy.post[LoginRequest, LoginResponse]("/login", body)
+    })
   }
 
   override def run(args: List[String]): ZIO[Environment, Nothing, Int] = {
-    val prog = for {
+    val prog: ZIO[Console with HeatzyWebService, Throwable, Int] = for {
       l <- login("xxx@gmail.com", "pwd")
       b <- bindings(l.token)
       _ <- putStrLn(b.toString)
     } yield 0
 
-    prog.provide(new WebServiceLive with Console.Live)
+    prog.provide(new Console.Live with HeatzyWebServiceLive)
       .catchAll(t => putStrLn(t.getMessage) *> ZIO.succeedLazy(0))
   }
 }
