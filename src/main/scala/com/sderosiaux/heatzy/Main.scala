@@ -2,24 +2,15 @@ package com.sderosiaux.heatzy
 
 import com.sderosiaux.heatzy.config.Heatzy
 import com.sderosiaux.heatzy.model.{BindingsResponse, LoginRequest, LoginResponse}
-import com.sderosiaux.heatzy.webservice.{HeatzyWebService, HeatzyWebServiceLive, WebService, WebServiceLoggerLive}
-import io.circe.{Decoder, Encoder}
+import com.sderosiaux.heatzy.webservice.{HeatzyWebService, HeatzyWebServiceLive}
 import org.http4s.circe.{jsonEncoderOf, jsonOf}
-import org.http4s.headers.{Accept, `Content-Type`}
-import org.http4s.{EntityDecoder, EntityEncoder, Header, Headers, MediaType, Method, Request, Uri}
+import org.http4s.{EntityDecoder, EntityEncoder}
+import scalaz.zio.{ZIO, _}
 import scalaz.zio.console.{Console, putStrLn}
-import scalaz.zio.{TaskR, ZIO}
-import com.sderosiaux.heatzy.model.{BindingsResponse, LoginRequest, LoginResponse}
-import scalaz.zio._
-import scalaz.zio.console._
 import scalaz.zio.interop.catz._
-//import scalaz.zio.interop.catz.implicits._
 import com.typesafe.config.ConfigFactory
 import io.circe.generic.auto._
 import io.circe.{Decoder, Encoder}
-import org.http4s._
-import org.http4s.circe._
-import org.http4s.headers.{Accept, `Content-Type`}
 
 /*
 TODO:
@@ -69,7 +60,12 @@ object Main extends CatsApp {
       _ <- putStrLn(b.toString)
     } yield 0
 
-    prog.provide(new Console.Live with HeatzyWebServiceLive)
+    val env = new Console.Live with HeatzyWebService {
+      override def heatzy: HeatzyWebService.Service[Any] = HeatzyWebServiceLive
+    }
+
+
+    prog.provide(env)
       .catchAll(t => putStrLn(t.getMessage) *> ZIO.succeedLazy(0))
   }
 }
