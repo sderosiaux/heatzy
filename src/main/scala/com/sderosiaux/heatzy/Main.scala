@@ -1,37 +1,31 @@
 package com.sderosiaux.heatzy
 
-//import cats.effect.Concurrent
-import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
+import com.sderosiaux.heatzy.config.Heatzy
+import com.sderosiaux.heatzy.model.{BindingsResponse, LoginRequest, LoginResponse}
+import com.sderosiaux.heatzy.webservice.{WebService, WebServiceLive}
+import com.typesafe.config.ConfigFactory
+import io.circe.{Decoder, Encoder}
+import org.http4s.circe.{jsonEncoderOf, jsonOf}
+import org.http4s.headers.{Accept, `Content-Type`}
+import org.http4s.{EntityDecoder, EntityEncoder, Header, Headers, MediaType, Method, Request, Uri}
+import scalaz.zio.console.{Console, putStrLn}
+import scalaz.zio.{TaskR, ZIO}
+import com.sderosiaux.heatzy.model.{BindingsResponse, LoginRequest, LoginResponse}
+import com.sderosiaux.heatzy.webservice.{WebService, WebServiceLive}
 import scalaz.zio._
 import scalaz.zio.console._
 import scalaz.zio.interop.catz._
 //import scalaz.zio.interop.catz.implicits._
-import cats.implicits._
 import com.typesafe.config.ConfigFactory
-import io.circe.{Decoder, Encoder}
 import io.circe.generic.auto._
+import io.circe.{Decoder, Encoder}
 import org.http4s._
 import org.http4s.circe._
-import org.http4s.client.Client
-import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.headers.{Accept, `Content-Type`}
-
-import scala.concurrent.ExecutionContext.Implicits.global
-
-case class LoginRequest(username: String, password: String, lang: String = "en")
-
-case class LoginResponse(token: String, uid: String, expire_at: Long)
-
-case class Device(protoc: Int, is_disabled: Boolean, dev_alias: String)
-
-case class BindingsResponse(devices: List[Device])
-
-case class Heatzy(url: String, appId: String)
 
 /*
 TODO:
 - sbt hardcore // see zio sbt :)
-- ZIO (env)
 - Database: https://github.com/mschuwalow/zio-todo-backend/tree/develop/app/src/main/scala/com/schuwalow/zio/todo
   also https://github.com/edvmorango/edm-message-service-consumer/blob/master/src/main/scala/effects/repository/MessageRepository.scala
 - Refresh token consideration
@@ -47,41 +41,8 @@ https://drive.google.com/drive/folders/0B9nVzuTl4YMOaXAzRnRhdXVma1k
 https://github.com/l3flo/jeedom-heatzy/blob/master/core/class/heatzy.class.php
  */
 
-object WebService {
 
-  trait Service {
-    def fetchAs[T](req: Request[TaskR[Console, ?]])(implicit d: EntityDecoder[TaskR[Console, ?], T], r: Runtime[Console]): TaskR[Console, T]
-  }
-
-}
-
-trait WebService {
-  def webService: WebService.Service
-}
-
-trait WebServiceLive extends WebService {
-  override def webService: WebService.Service = new WebService.Service {
-    override def fetchAs[T](req: Request[TaskR[Console, ?]])(implicit d: EntityDecoder[TaskR[Console, ?], T], r: Runtime[Console]): TaskR[Console, T] = {
-      BlazeClientBuilder[TaskR[Console, ?]](global).resource.use { c =>
-        withLogging(c).fetchAs[T](req)
-      }
-    }
-  }
-
-  val log: String => ZIO[Console, Throwable, Unit] = (x: String) => putStrLn(x)
-
-  private def withLogging[T](c: Client[TaskR[Console, ?]]): Client[TaskR[Console, ?]] = {
-    ResponseLogger(logHeaders = true, logBody = true, logAction = log.some)(
-      RequestLogger(logHeaders = true, logBody = true, logAction = log.some)(
-        c
-      )
-    )
-  }
-}
-
-object WebServiceLive extends WebServiceLive
-
-object Heatzy extends CatsApp {
+object Main extends CatsApp {
   val config = ConfigFactory.load()
   val heatzy = Heatzy(config.getString("heatzy.cloud.url"), config.getString("heatzy.app.id"))
 
@@ -135,7 +96,7 @@ object Heatzy extends CatsApp {
       _ <- putStrLn(b.toString)
     } yield 0
 
-    prog.provide(new Console.Live with WebServiceLive)
+    prog.provide(new WebServiceLive with Console.Live)
       .catchAll(t => putStrLn(t.getMessage) *> ZIO.succeedLazy(0))
   }
 }
