@@ -1,16 +1,13 @@
 package com.sderosiaux.heatzy.webservice
 
 import org.http4s.{EntityDecoder, Request}
-import scalaz.zio.ZIO
+import scalaz.zio.TaskR
 
-trait WebService extends Serializable {
-  def webService: WebService.Service[Any]
+trait WebService[-R] extends Serializable {
+  def ws: WebService.Service[R]
 }
-
-object WebService extends Serializable {
-
+object WebService {
   trait Service[R] extends Serializable {
-    def fetchAs[T](req: Request[ZIO[R, Throwable, ?]])(implicit d: EntityDecoder[ZIO[R, Throwable, ?], T]): ZIO[R, Throwable, T]
+    def fetchAs[T](req: Request[TaskR[R, ?]])(implicit d: EntityDecoder[TaskR[R, ?], T]): TaskR[R, T]
   }
-
 }

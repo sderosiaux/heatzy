@@ -1,45 +1,43 @@
 package com.sderosiaux.heatzy.webservice
 
-import com.sderosiaux.heatzy.config.Heatzy
+import com.sderosiaux.heatzy.config.HeatzyConfiguration
 import org.http4s.headers.{Accept, `Content-Type`}
 import org.http4s.{EntityDecoder, EntityEncoder, Header, Headers, MediaType, Method, Request, Uri}
 import scalaz.zio.ZIO
 
-trait HeatzyWebServiceLive extends HeatzyWebService.Service[Heatzy with WebService] {
+object HeatzyWebServiceLive extends HeatzyWebService.Service[HeatzyConfiguration with WebService[Any]] {
 
-  override def post[A, B](path: String, body: A)(implicit enc: EntityEncoder[ZIO[Any, Throwable, ?], A], dec: EntityDecoder[ZIO[Any, Throwable, ?], B]): ZIO[Heatzy with WebService, Throwable, B] = {
-    ZIO.accessM(x => {
+  override def post[A, B](path: String, body: A)(implicit enc: EntityEncoder[ZIO[Any, Throwable, ?], A], dec: EntityDecoder[ZIO[Any, Throwable, ?], B]): ZIO[HeatzyConfiguration with WebService[Any], Throwable, B] = {
+    ZIO.accessM[HeatzyConfiguration with WebService[Any]](env => {
       val req = Request[ZIO[Any, Throwable, ?]](
         method = Method.POST,
-        uri = Uri.unsafeFromString(s"${x.url}$path"),
+        uri = Uri.unsafeFromString(s"${env.config.url}$path"),
         headers = Headers.of(
           Accept(MediaType.application.json),
           `Content-Type`(MediaType.application.json),
-          Header("X-Gizwits-Application-Id", x.appId)
+          Header("X-Gizwits-Application-Id", env.config.appId)
         )
       ).withEntity(body)
 
-      x.webService.fetchAs[B](req)
+      env.ws.fetchAs[B](req)
     })
   }
 
-  override def get[A](path: String, token: String)(implicit dec: EntityDecoder[ZIO[Any, Throwable, ?], A]): ZIO[Heatzy with WebService, Throwable, A] = {
-    ZIO.accessM(x => {
+  override def get[A](path: String, token: String)(implicit dec: EntityDecoder[ZIO[Any, Throwable, ?], A]): ZIO[HeatzyConfiguration with WebService[Any], Throwable, A] = {
+    ZIO.accessM[HeatzyConfiguration with WebService[Any]](env => {
       val res = Request[ZIO[Any, Throwable, ?]](
         method = Method.GET,
-        uri = Uri.unsafeFromString(s"${x.url}$path"),
+        uri = Uri.unsafeFromString(s"${env.config.url}$path"),
         headers = Headers.of(
           Accept(MediaType.application.json),
           `Content-Type`(MediaType.application.json),
-          Header("X-Gizwits-Application-Id", x.appId),
+          Header("X-Gizwits-Application-Id", env.config.appId),
           Header("X-Gizwits-User-token", token)
         )
       )
 
-      x.webService.fetchAs[A](res)
+      env.ws.fetchAs[A](res)
     })
   }
 
 }
-
-object HeatzyWebServiceLive extends HeatzyWebServiceLive

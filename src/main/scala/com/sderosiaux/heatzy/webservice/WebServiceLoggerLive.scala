@@ -7,20 +7,22 @@ import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.{EntityDecoder, Request}
 import scalaz.zio.console.{Console, putStrLn}
 import scalaz.zio.interop.catz._
-import scalaz.zio.{DefaultRuntime, ZIO}
+import scalaz.zio.{DefaultRuntime, Task, TaskR, ZIO}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
-trait WebServiceLoggerLive extends WebService.Service[Console] {
+object WebServiceLoggerLive extends WebService.Service[Console] {
   implicit val rt = new DefaultRuntime {}
 
-  override def fetchAs[T](req: Request[ZIO[Console, Throwable, ?]])(implicit d: EntityDecoder[ZIO[Console, Throwable, ?], T]): ZIO[Console, Throwable, T] = {
-    BlazeClientBuilder[ZIO[Console, Throwable, ?]](global).resource.use { c =>
+  // Throwable as error channel because we need to summon a cats's Concurrent
+
+  override def fetchAs[T](req: Request[TaskR[Console, ?]])(implicit d: EntityDecoder[TaskR[Console, ?], T]): ZIO[Console, Throwable, T] = {
+    BlazeClientBuilder[TaskR[Console, ?]](global).resource.use { c =>
       withLogging(c).fetchAs[T](req)
     }
   }
 
-  private def withLogging[T](c: Client[ZIO[Console, Throwable, ?]]): Client[ZIO[Console, Throwable, ?]] = {
+  private def withLogging[T](c: Client[TaskR[Console, ?]]): Client[TaskR[Console, ?]] = {
     ResponseLogger(logHeaders = true, logBody = true, logAction = log.some)(
       RequestLogger(logHeaders = true, logBody = true, logAction = log.some)(
         c
@@ -28,6 +30,6 @@ trait WebServiceLoggerLive extends WebService.Service[Console] {
     )
   }
 
-  private val log: String => ZIO[Console, Throwable, Unit] = (x: String) => putStrLn(x)
+  private val log: String => TaskR[Console, Unit] = (x: String) => putStrLn(x)
 
 }
