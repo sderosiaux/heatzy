@@ -1,0 +1,20 @@
+{
+  "remark": "range=2|isdelete=1|gid=0|groupname=|grouprange=2",
+  "protoc": 3,
+  "wss_port": 8880,
+  "ws_port": 8080,
+  "did": "thedid",
+  "port_s": 8883,
+  "is_disabled": false,
+  "proto_ver": "04",
+  "product_key": "thekey",
+  "port": 1883,
+  "host": "eusandbox.gizwits.com",
+  "mac": "themac",
+  "role": "special",
+  "gw_did": null,
+  "mesh_id": null,
+  "is_online": true,
+  "passcode": "thepasscode",
+  "product_name": "Pilote2"
+}

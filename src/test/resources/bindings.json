@@ -1,0 +1,54 @@
+{
+  "devices": [
+    {
+      "protoc": 3,
+      "ws_port": 8080,
+      "port_s": 8883,
+      "is_disabled": false,
+      "gw_did": null,
+      "wifi_soft_version": "04020028",
+      "dev_alias": "Radiateur Chambre",
+      "mesh_id": null,
+      "is_online": true,
+      "host": "eusandbox.gizwits.com",
+      "dev_label": [
+      ],
+      "port": 1883,
+      "remark": "range=2|isdelete=1|gid=0|groupname=|grouprange=2",
+      "did": "ABC",
+      "mac": "DEF",
+      "product_key": "GHI",
+      "wss_port": 8880,
+      "role": "special",
+      "is_sandbox": true,
+      "passcode": "JKL",
+      "type": "normal",
+      "product_name": "Pilote2"
+    },
+    {
+      "protoc": 3,
+      "ws_port": 8080,
+      "port_s": 8883,
+      "is_disabled": false,
+      "gw_did": null,
+      "wifi_soft_version": "04020028",
+      "dev_alias": "Radiateur Bureau",
+      "mesh_id": null,
+      "is_online": true,
+      "host": "eusandbox.gizwits.com",
+      "dev_label": [
+      ],
+      "port": 1883,
+      "remark": "range=1|isdelete=1|gid=0|groupname=|grouprange=1",
+      "did": "ABC",
+      "mac": "DEF",
+      "product_key": "GHI",
+      "wss_port": 8880,
+      "role": "special",
+      "is_sandbox": true,
+      "passcode": "JKL",
+      "type": "normal",
+      "product_name": "Pilote2"
+    }
+  ]
+}

@@ -42,6 +42,12 @@ object Main extends CatsApp {
       l <- login(h.login, h.pwd)
       b <- bindings(l.token)
       _ <- putStrLn(b.toString)
+
+      _ <- scheduler(b.devices.head.did, l.token).flatMap(x => putStrLn(x.toString))
+      _ <- latest(b.devices.head.did, l.token).flatMap(x => putStrLn(x.toString))
+      _ <- datapoint(b.devices.head.product_key, l.token).flatMap(x => putStrLn(x.toString))
+      _ <- device(b.devices.head.did, l.token).flatMap(x => putStrLn(x.toString))
+      _ <- user(l.token).flatMap(x => putStrLn(x.toString))
     } yield 0
   }
 

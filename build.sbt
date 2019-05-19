@@ -18,11 +18,11 @@ libraryDependencies += "org.http4s" %% "http4s-blaze-client" % http4sVersion
 libraryDependencies += "org.http4s" %% "http4s-prometheus-metrics" % http4sVersion
 libraryDependencies += "io.circe" %% "circe-generic" % "0.11.1"
 libraryDependencies += "io.circe" %% "circe-literal" % "0.11.1"
+libraryDependencies += "io.circe" %% "circe-parser" % "0.11.1" % "test"
 libraryDependencies += "org.scalaz" %% "scalaz-zio" % "1.0-RC4"
 libraryDependencies += "org.scalaz" %% "scalaz-zio-interop-cats" % "1.0-RC4"
-
 libraryDependencies += "com.github.pureconfig" %% "pureconfig" % "0.11.0"
-
+libraryDependencies += "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 
 scalacOptions ++= Seq("-Ypartial-unification")
 

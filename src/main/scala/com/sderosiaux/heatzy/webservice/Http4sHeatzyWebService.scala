@@ -2,7 +2,7 @@ package com.sderosiaux.heatzy.webservice
 
 import cats.implicits._
 import com.sderosiaux.heatzy.config.Heatzy
-import com.sderosiaux.heatzy.model.{BindingsResponse, LoginRequest, LoginResponse}
+import com.sderosiaux.heatzy.model.{BindingsResponse, DataPoint, Device, DeviceStatus, LoginRequest, LoginResponse, Scheduler, User}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Encoder}
 import org.http4s.circe.{jsonEncoderOf, jsonOf}
@@ -31,6 +31,27 @@ class Http4sHeatzyWebService[R <: Console](runtime: Runtime[R], config: Heatzy) 
   override def login(username: String, password: String): Task[LoginResponse] = {
     post[LoginRequest, LoginResponse]("/login", LoginRequest(username, password))
   }
+
+  override def scheduler(did: String, token: String): Task[List[Scheduler]] =  {
+    get[List[Scheduler]](s"/devices/$did/scheduler", token)
+  }
+
+  override def latest(did: String, token: String): Task[DeviceStatus] =  {
+    get[DeviceStatus](s"/devdata/$did/latest", token)
+  }
+
+  override def datapoint(productKey: String, token: String): Task[DataPoint] =  {
+    get[DataPoint](s"/datapoint?product_key=$productKey", token)
+  }
+
+  override def device(did: String, token: String): Task[Device] =  {
+    get[Device](s"/devices/$did", token)
+  }
+
+  override def user(token: String): Task[User] =  {
+    get[User](s"/users", token)
+  }
+
 
   private def post[A, B](path: String, body: A)(implicit enc: EntityEncoder[TaskR[Console, ?], A], dec: EntityDecoder[TaskR[Console, ?], B]): Task[B] = {
     val req = Request[TaskR[Console, ?]](

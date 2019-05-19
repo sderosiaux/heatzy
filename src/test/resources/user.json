@@ -1,0 +1,13 @@
+{
+  "username": null,
+  "uid": "MYUID",
+  "phone": null,
+  "birthday": null,
+  "address": null,
+  "lang": "en",
+  "remark": null,
+  "name": null,
+  "is_anonymous": false,
+  "gender": null,
+  "email": "myemail@example.com"
+}
