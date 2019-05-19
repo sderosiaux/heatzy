@@ -1,6 +1,7 @@
 package com.sderosiaux.heatzy.webservice
 
-import com.sderosiaux.heatzy.config.HeatzyConfiguration
+import cats.implicits._
+import com.sderosiaux.heatzy.config.Heatzy
 import com.sderosiaux.heatzy.model.{BindingsResponse, LoginRequest, LoginResponse}
 import io.circe.generic.auto._
 import io.circe.{Decoder, Encoder}
@@ -10,38 +11,35 @@ import org.http4s.client.blaze.BlazeClientBuilder
 import org.http4s.client.middleware.{RequestLogger, ResponseLogger}
 import org.http4s.headers.{Accept, `Content-Type`}
 import org.http4s.{EntityDecoder, EntityEncoder, Header, Headers, MediaType, Method, Request, Uri}
-import scalaz.zio.Task
+import scalaz.zio.{Task, _}
+import scalaz.zio.console.{Console, _}
 import scalaz.zio.interop.catz._
-import cats.implicits._
-import scalaz.zio.console._
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scalaz.zio._
-import scalaz.zio.console.Console
 
 
-class Http4sHeatzyWebService[R <: Console](runtime: Runtime[R], config: HeatzyConfiguration) extends HeatzyWebService.Service[Any] {
+class Http4sHeatzyWebService[R <: Console](runtime: Runtime[R], config: Heatzy) extends HeatzyWebService.Service[Any] {
 
   implicit val rt = runtime
   implicit def circeJsonDecoder[A](implicit decoder: Decoder[A]): EntityDecoder[TaskR[Console, ?], A] = jsonOf[TaskR[Console, ?], A]
   implicit def circeJsonEncoder[A](implicit encoder: Encoder[A]): EntityEncoder[TaskR[Console, ?], A] = jsonEncoderOf[TaskR[Console, ?], A]
 
   override def bindings(token: String): Task[BindingsResponse] = {
-    get[BindingsResponse]("/bindings", token).provide(config)
+    get[BindingsResponse]("/bindings", token)
   }
 
   override def login(username: String, password: String): Task[LoginResponse] = {
-    post[LoginRequest, LoginResponse]("/login", LoginRequest(username, password)).provide(config)
+    post[LoginRequest, LoginResponse]("/login", LoginRequest(username, password))
   }
 
   private def post[A, B](path: String, body: A)(implicit enc: EntityEncoder[TaskR[Console, ?], A], dec: EntityDecoder[TaskR[Console, ?], B]): Task[B] = {
     val req = Request[TaskR[Console, ?]](
       method = Method.POST,
-      uri = Uri.unsafeFromString(s"${config.config.url}$path"),
+      uri = Uri.unsafeFromString(s"${config.url}$path"),
       headers = Headers.of(
         Accept(MediaType.application.json),
         `Content-Type`(MediaType.application.json),
-        Header("X-Gizwits-Application-Id", config.config.appId)
+        Header("X-Gizwits-Application-Id", config.appId)
       )
     ).withEntity(body)
 
@@ -53,11 +51,11 @@ class Http4sHeatzyWebService[R <: Console](runtime: Runtime[R], config: HeatzyCo
   private def get[A](path: String, token: String)(implicit dec: EntityDecoder[TaskR[Console, ?], A]): Task[A] = {
     val req = Request[TaskR[Console, ?]](
       method = Method.GET,
-      uri = Uri.unsafeFromString(s"${config.config.url}$path"),
+      uri = Uri.unsafeFromString(s"${config.url}$path"),
       headers = Headers.of(
         Accept(MediaType.application.json),
         `Content-Type`(MediaType.application.json),
-        Header("X-Gizwits-Application-Id", config.config.appId),
+        Header("X-Gizwits-Application-Id", config.appId),
         Header("X-Gizwits-User-token", token)
       )
     )

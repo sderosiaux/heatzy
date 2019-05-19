@@ -1,7 +1,7 @@
 package com.sderosiaux.heatzy.webservice
 
 import com.sderosiaux.heatzy.model.{BindingsResponse, LoginResponse}
-import scalaz.zio.{Task, ZIO}
+import scalaz.zio.{Task, TaskR, ZIO}
 
 trait HeatzyWebService extends Serializable {
   def heatzy: HeatzyWebService.Service[Any]
@@ -25,11 +25,11 @@ object HeatzyWebService extends Serializable {
     def login(username: String, password: String): Task[LoginResponse]
   }
 
-  def bindings(token: String): ZIO[HeatzyWebService, Throwable, BindingsResponse] = {
+  def bindings(token: String): TaskR[HeatzyWebService, BindingsResponse] = {
     ZIO.accessM[HeatzyWebService](_.heatzy.bindings(token))
   }
 
-  def login(username: String, password: String): ZIO[HeatzyWebService, Throwable, LoginResponse] = {
+  def login(username: String, password: String): TaskR[HeatzyWebService, LoginResponse] = {
     ZIO.accessM[HeatzyWebService](_.heatzy.login(username, password))
   }
 }

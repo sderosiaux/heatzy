@@ -6,7 +6,6 @@ import scalaz.zio.console.{Console, putStrLn}
 import scalaz.zio.interop.catz._
 import scalaz.zio.system.System
 import scalaz.zio.{Task, ZIO}
-import pureconfig.generic.auto._
 
 /*
 TODO:
@@ -30,28 +29,27 @@ object Main extends CatsApp {
 
   import HeatzyWebService._
 
-  val heatzy: Task[Heatzy] = ZIO.fromEither(pureconfig.loadConfig[Heatzy]("heatzy"))
-    .catchAll(failures => ZIO.fail(new Exception(failures.toList.map(_.description).mkString(","))))
+  val heatzy: Task[Heatzy] = HeatzyConfiguration.load()
 
   override def run(args: List[String]): ZIO[Environment, Nothing, Int] = {
-    val prog: ZIO[Console with HeatzyWebService, Throwable, Int] = for {
-      h <- heatzy
+    heatzy
+      .flatMap(h => main(h).provideSome(appEnv(h)))
+      .catchAll(t => putStrLn(t.getMessage) *> ZIO.succeedLazy(0)) // remove Throwable error channel
+  }
+
+  private def main(h: Heatzy): ZIO[Console with HeatzyWebService, Throwable, Int] = {
+    for {
       l <- login(h.login, h.pwd)
       b <- bindings(l.token)
       _ <- putStrLn(b.toString)
     } yield 0
-
-    val zio = heatzy.flatMap { h => prog.provideSome(appEnv(h)) }
-    zio.catchAll(t => putStrLn(t.getMessage) *> ZIO.succeedLazy(0)) // remove Throwable error channel
   }
 
-  def appEnv(cfg: Heatzy)(base: Environment): System with Console with HeatzyWebService = new scalaz.zio.system.System with Console with HeatzyWebService {
+  def appEnv(cfg: Heatzy)(base: Environment): System with Console with HeatzyWebService = new System with Console with HeatzyWebService {
     override val console: Console.Service[Any] = base.console
     override val system: System.Service[Any] = base.system
 
-    override def heatzy: HeatzyWebService.Service[Any] = new Http4sHeatzyWebService(runtime, new HeatzyConfiguration {
-      override val config: Heatzy = cfg
-    })
+    override def heatzy: HeatzyWebService.Service[Any] = new Http4sHeatzyWebService(runtime, cfg)
   }
 
 }
