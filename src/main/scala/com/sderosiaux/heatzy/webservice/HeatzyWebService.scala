@@ -1,18 +1,35 @@
 package com.sderosiaux.heatzy.webservice
 
-import org.http4s.{EntityDecoder, EntityEncoder}
-import scalaz.zio.ZIO
+import com.sderosiaux.heatzy.model.{BindingsResponse, LoginResponse}
+import scalaz.zio.{Task, ZIO}
 
 trait HeatzyWebService extends Serializable {
   def heatzy: HeatzyWebService.Service[Any]
 }
+//
+//trait Serde[A] {
+//  type Format
+//  def serialize(item: A): Task[Format]
+//  def deserialize(json: Format): Task[A]
+//}
+
+//
+//    def post[A, B](path: String, body: A): TaskR[R with Serde[A] with Serde[B], B]
+//    def get[A](path: String, token: String): TaskR[R with Serde[A], A]
+//
 
 object HeatzyWebService extends Serializable {
 
   trait Service[R] extends Serializable {
-    def post[A, B](path: String, body: A)(implicit enc: EntityEncoder[ZIO[Any, Throwable, ?], A], dec: EntityDecoder[ZIO[Any, Throwable, ?], B]): ZIO[R, Throwable, B]
-
-    def get[A](path: String, token: String)(implicit dec: EntityDecoder[ZIO[Any, Throwable, ?], A]): ZIO[R, Throwable, A]
+    def bindings(token: String): Task[BindingsResponse]
+    def login(username: String, password: String): Task[LoginResponse]
   }
 
+  def bindings(token: String): ZIO[HeatzyWebService, Throwable, BindingsResponse] = {
+    ZIO.accessM[HeatzyWebService](_.heatzy.bindings(token))
+  }
+
+  def login(username: String, password: String): ZIO[HeatzyWebService, Throwable, LoginResponse] = {
+    ZIO.accessM[HeatzyWebService](_.heatzy.login(username, password))
+  }
 }
