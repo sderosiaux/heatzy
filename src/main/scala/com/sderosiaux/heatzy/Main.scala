@@ -2,13 +2,11 @@ package com.sderosiaux.heatzy
 
 import com.sderosiaux.heatzy.config.{Heatzy, HeatzyConfiguration}
 import com.sderosiaux.heatzy.webservice.{HeatzyWebService, Http4sHeatzyWebService}
-import com.typesafe.config.ConfigFactory
-import scalaz.zio.ZIO
 import scalaz.zio.console.{Console, putStrLn}
 import scalaz.zio.interop.catz._
 import scalaz.zio.system.System
-
-import scala.util.Try
+import scalaz.zio.{Task, ZIO}
+import pureconfig.generic.auto._
 
 /*
 TODO:
@@ -19,7 +17,6 @@ TODO:
 - The rest
 - API ?
 - metrics
-- config using ciris // ZIO.fromEither(ConfigLoader.load)
 - ability to push events somewhere?
  */
 
@@ -33,13 +30,8 @@ object Main extends CatsApp {
 
   import HeatzyWebService._
 
-  val config = ConfigFactory.load()
-  val heatzy = ZIO.fromTry(Try(Heatzy(
-    config.getString("heatzy.cloud.url"),
-    config.getString("heatzy.app.id"),
-    config.getString("heatzy.login"),
-    config.getString("heatzy.pwd")
-  )))
+  val heatzy: Task[Heatzy] = ZIO.fromEither(pureconfig.loadConfig[Heatzy]("heatzy"))
+    .catchAll(failures => ZIO.fail(new Exception(failures.toList.map(_.description).mkString(","))))
 
   override def run(args: List[String]): ZIO[Environment, Nothing, Int] = {
     val prog: ZIO[Console with HeatzyWebService, Throwable, Int] = for {
