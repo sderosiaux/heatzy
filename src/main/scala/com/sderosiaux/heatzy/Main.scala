@@ -6,6 +6,7 @@ import com.typesafe.config.ConfigFactory
 import scalaz.zio.ZIO
 import scalaz.zio.console.{Console, putStrLn}
 import scalaz.zio.interop.catz._
+import scalaz.zio.system.System
 
 import scala.util.Try
 
@@ -33,11 +34,17 @@ object Main extends CatsApp {
   import HeatzyWebService._
 
   val config = ConfigFactory.load()
-  val heatzy = ZIO.fromTry(Try(Heatzy(config.getString("heatzy.cloud.url"), config.getString("heatzy.app.id"))))
+  val heatzy = ZIO.fromTry(Try(Heatzy(
+    config.getString("heatzy.cloud.url"),
+    config.getString("heatzy.app.id"),
+    config.getString("heatzy.login"),
+    config.getString("heatzy.pwd")
+  )))
 
   override def run(args: List[String]): ZIO[Environment, Nothing, Int] = {
     val prog: ZIO[Console with HeatzyWebService, Throwable, Int] = for {
-      l <- login("xxx@gmail.com", "pwd")
+      h <- heatzy
+      l <- login(h.login, h.pwd)
       b <- bindings(l.token)
       _ <- putStrLn(b.toString)
     } yield 0
@@ -46,8 +53,9 @@ object Main extends CatsApp {
     zio.catchAll(t => putStrLn(t.getMessage) *> ZIO.succeedLazy(0)) // remove Throwable error channel
   }
 
-  def appEnv(cfg: Heatzy)(base: Environment): Console with HeatzyWebService = new Console with HeatzyWebService {
+  def appEnv(cfg: Heatzy)(base: Environment): System with Console with HeatzyWebService = new scalaz.zio.system.System with Console with HeatzyWebService {
     override val console: Console.Service[Any] = base.console
+    override val system: System.Service[Any] = base.system
 
     override def heatzy: HeatzyWebService.Service[Any] = new Http4sHeatzyWebService(new HeatzyConfiguration {
       override val config: Heatzy = cfg
