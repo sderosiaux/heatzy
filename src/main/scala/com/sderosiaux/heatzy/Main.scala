@@ -57,7 +57,7 @@ object Main extends CatsApp {
     override val console: Console.Service[Any] = base.console
     override val system: System.Service[Any] = base.system
 
-    override def heatzy: HeatzyWebService.Service[Any] = new Http4sHeatzyWebService(new HeatzyConfiguration {
+    override def heatzy: HeatzyWebService.Service[Any] = new Http4sHeatzyWebService(runtime, new HeatzyConfiguration {
       override val config: Heatzy = cfg
     })
   }

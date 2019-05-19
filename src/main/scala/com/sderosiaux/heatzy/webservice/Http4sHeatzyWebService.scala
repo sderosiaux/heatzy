@@ -20,11 +20,9 @@ import scalaz.zio._
 import scalaz.zio.console.Console
 
 
-class Http4sHeatzyWebService(config: HeatzyConfiguration) extends HeatzyWebService.Service[Any] {
+class Http4sHeatzyWebService[R <: Console](runtime: Runtime[R], config: HeatzyConfiguration) extends HeatzyWebService.Service[Any] {
 
-  implicit val rt = new DefaultRuntime {} // for implicits ConcurrentEffect conversion
-
-  //implicit def circeEntityDecoder[F[_]: Sync, A: Decoder]: EntityDecoder[F, A] = jsonOf[F, A]
+  implicit val rt = runtime
   implicit def circeJsonDecoder[A](implicit decoder: Decoder[A]): EntityDecoder[TaskR[Console, ?], A] = jsonOf[TaskR[Console, ?], A]
   implicit def circeJsonEncoder[A](implicit encoder: Encoder[A]): EntityEncoder[TaskR[Console, ?], A] = jsonEncoderOf[TaskR[Console, ?], A]
 
